@@ -42,7 +42,7 @@ public class OnlineManager : MonoBehaviour
 		instance.onlineType = OnlineType.Client;
 
 		instance.client = new TcpClient();
-		instance.client.ConnectTo(new IPAddress(3232235790), 8000);
+		instance.client.ConnectTo(IPAddress.Parse("192.168.1.14"), 8000);
 	}
 
 	#endregion
