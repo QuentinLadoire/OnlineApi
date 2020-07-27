@@ -13,10 +13,12 @@ public class ServerPanel : MonoBehaviour
 		{
 			foreach (var ipEndPoint in ipEndPoints)
 			{
-				var str = ipEndPoint.Address.ToString();
-				if (!clientListUI.Contains(str))
+				var ip = ipEndPoint.Address.ToString();
+				var port = ipEndPoint.Port.ToString();
+
+				if (!clientListUI.Contains(ip, port))
 				{
-					clientListUI.AddClient(str);
+					clientListUI.AddClient(ip, port);
 				}
 			}
 		};

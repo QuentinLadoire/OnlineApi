@@ -1,60 +1,61 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
 
 public class ClientListUI : MonoBehaviour
 {
-    [SerializeField] GameObject clientLabelPrefab = null;
+    [SerializeField] GameObject clientInfoPrefab = null;
 
-	List<Text> clientLabels = new List<Text>();
+	List<ClientInfoUI> clientInfos = new List<ClientInfoUI>();
 
 	void UpdatePosition()
 	{
-		for (int i = 0; i < clientLabels.Count; i++)
+		for (int i = 0; i < clientInfos.Count; i++)
 		{
-			clientLabels[i].transform.position = clientLabelPrefab.transform.position + new Vector3(0.0f, 60.0f * i, 0.0f);
+			clientInfos[i].transform.localPosition = clientInfoPrefab.transform.localPosition + new Vector3(0.0f, -80.0f * i, 0.0f);
 		}
 	}
 
-	public void AddClient(string label)
+	public void AddClient(string ip, string port)
 	{
-		var tmp = Instantiate(clientLabelPrefab).GetComponent<Text>();
-		tmp.transform.SetParent(clientLabelPrefab.transform.parent, false);
-		tmp.gameObject.SetActive(true);
-		tmp.text = label;
+		var clientInfo = Instantiate(clientInfoPrefab).GetComponent<ClientInfoUI>();
 
-		clientLabels.Add(tmp);
+		clientInfo.transform.SetParent(clientInfoPrefab.transform.parent, false);
+		clientInfo.gameObject.SetActive(true);
+
+		clientInfo.SetIpAndPort(ip, port);
+
+		clientInfos.Add(clientInfo);
 
 		UpdatePosition();
 	}
-	public void RemoveClient(string label)
+	public void RemoveClient(string ip , string port)
 	{
-		var toRemove = clientLabels.Find(item => item.text == label);
+		var toRemove = clientInfos.Find(item => item.Ip == ip && item.Port == port);
 		if (toRemove != null)
 		{
-			clientLabels.Remove(toRemove);
+			clientInfos.Remove(toRemove);
 			Destroy(toRemove);
 
 			UpdatePosition();
 		}
 	}
-	public bool Contains(string label)
+	public bool Contains(string ip, string port)
 	{
-		return clientLabels.Exists(item => item.text == label);
+		return clientInfos.Exists(item => item.Ip == ip && item.Port == port);
 	}
 	public void Clear()
 	{
-		foreach (var clientLabel in clientLabels)
+		foreach (var clientLabel in clientInfos)
 		{
 			Destroy(clientLabel.gameObject);
 		}
 
-		clientLabels.Clear();
+		clientInfos.Clear();
 	}
 
 	private void Awake()
 	{
-		if (clientLabelPrefab != null) clientLabelPrefab.SetActive(false);
+		if (clientInfoPrefab != null) clientInfoPrefab.SetActive(false);
 	}
 }
