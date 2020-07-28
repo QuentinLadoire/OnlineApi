@@ -23,10 +23,12 @@ public class MenuPanelUI : MonoBehaviour
 
 		if (clientButton != null) clientButton.onClick.AddListener(() =>
 		{
-			OnlineManager.ConnectClient();
+			if (OnlineManager.ConnectClient())
+			{
 
-			gameObject.SetActive(false);
-			clientPanel.SetActive(true);
+				gameObject.SetActive(false);
+				clientPanel.SetActive(true);
+			}
 		});
 	}
 }

@@ -8,14 +8,6 @@ public class ClientListUI : MonoBehaviour
 
 	List<ClientInfoUI> clientInfos = new List<ClientInfoUI>();
 
-	void UpdatePosition()
-	{
-		for (int i = 0; i < clientInfos.Count; i++)
-		{
-			clientInfos[i].transform.localPosition = clientInfoPrefab.transform.localPosition + new Vector3(0.0f, -80.0f * i, 0.0f);
-		}
-	}
-
 	public void AddClient(string ip, string port)
 	{
 		var clientInfo = Instantiate(clientInfoPrefab).GetComponent<ClientInfoUI>();
@@ -25,9 +17,9 @@ public class ClientListUI : MonoBehaviour
 
 		clientInfo.SetIpAndPort(ip, port);
 
-		clientInfos.Add(clientInfo);
+		clientInfo.transform.localPosition = clientInfoPrefab.transform.localPosition + new Vector3(0.0f, -80.0f * clientInfos.Count, 0.0f);
 
-		UpdatePosition();
+		clientInfos.Add(clientInfo);
 	}
 	public void RemoveClient(string ip , string port)
 	{
@@ -37,7 +29,10 @@ public class ClientListUI : MonoBehaviour
 			clientInfos.Remove(toRemove);
 			Destroy(toRemove);
 
-			UpdatePosition();
+			for (int i = 0; i < clientInfos.Count; i++)
+			{
+				clientInfos[i].transform.localPosition = clientInfoPrefab.transform.localPosition + new Vector3(0.0f, -80.0f * i, 0.0f);
+			}
 		}
 	}
 	public bool Contains(string ip, string port)

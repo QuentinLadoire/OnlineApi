@@ -6,6 +6,6 @@ public class tmp : MonoBehaviour
 {
 	private void Awake()
 	{
-		Screen.SetResolution(400, 400, FullScreenMode.Windowed);
+		Screen.SetResolution(800, 450, FullScreenMode.Windowed);
 	}
 }

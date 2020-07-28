@@ -5,15 +5,29 @@ using System.Net.Sockets;
 
 public class TcpClient
 {
-    Socket m_socket = null;
+    public LogCallback logCallback = (string log) => { };
+
+    Socket socket = null;
 
     public TcpClient()
 	{
-        m_socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
     }
 
-    public void ConnectTo(IPAddress serverAddress, int serverPort)
+    public bool ConnectTo(IPAddress serverAddress, int serverPort)
 	{
-        m_socket.Connect(serverAddress, serverPort);
+        socket.Connect(serverAddress, serverPort);
+        return socket.Connected;
 	}
+    
+    public void Update()
+	{
+        logCallback("Connected Socket : " + socket.Connected);
+    }
+
+    public void Close()
+	{
+        socket.Shutdown(SocketShutdown.Both);
+        socket.Close();
+    }
 }

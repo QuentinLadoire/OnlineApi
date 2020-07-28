@@ -14,18 +14,26 @@ public class OnlineManager : MonoBehaviour
 {
 	static OnlineManager instance = null;
 
-	#region Instance Variable
-
 	OnlineType onlineType = OnlineType.None;
 
 	TcpServer server = null;
 	TcpClient client = null;
 
-	#endregion
+	public static LogCallback LogCallback
+	{
+		get
+		{
+			if (instance.onlineType == OnlineType.Server) return instance.server.logCallback;
+			else if (instance.onlineType == OnlineType.Client) return instance.client.logCallback;
 
-	#region Static Function
-
-	public static DequeueCallback DequeueCallback { get => instance.server.dequeueCallBack; set => instance.server.dequeueCallBack = value; }
+			return null;
+		}
+		set
+		{
+			if (instance.onlineType == OnlineType.Server) instance.server.logCallback = value;
+			else if (instance.onlineType == OnlineType.Client) instance.client.logCallback = value;
+		}
+	}
 	public static ConnectionCallback ConnectionCallback { get => instance.server.connectionCallBack; set => instance.server.connectionCallBack = value; }
 
 	public static void StartServer()
@@ -34,20 +42,24 @@ public class OnlineManager : MonoBehaviour
 
 		instance.server = new TcpServer();
 		instance.server.Start();
-
-		instance.server.dequeueCallBack += (string msg) => { Debug.Log(msg); };
 	}
-	public static void ConnectClient()
+	public static bool ConnectClient()
 	{
 		instance.onlineType = OnlineType.Client;
 
 		instance.client = new TcpClient();
-		instance.client.ConnectTo(IPAddress.Parse("192.168.1.14"), 8000);
+		LogCallback += (string log) => { Debug.Log(log); };
+
+		return instance.client.ConnectTo(IPAddress.Parse("192.168.1.14"), 8000);
 	}
 
-	#endregion
-
-	#region Instance Function
+	public static void DisconnectClient()
+	{
+		if (instance.onlineType == OnlineType.Client)
+		{
+			instance.client.Close();
+		}
+	}
 
 	private void Awake()
 	{
@@ -59,7 +71,9 @@ public class OnlineManager : MonoBehaviour
 		{
 			server.Update();
 		}
+		else if (onlineType == OnlineType.Client)
+		{
+			client.Update();
+		}
 	}
-
-	#endregion
 }
