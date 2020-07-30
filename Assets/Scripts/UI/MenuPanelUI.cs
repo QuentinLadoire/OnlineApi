@@ -15,7 +15,7 @@ public class MenuPanelUI : MonoBehaviour
 	{
 		if (serverButton != null) serverButton.onClick.AddListener(() =>
 		{
-			OnlineManager.StartServer();
+			OnlineManager.CreateServer();
 
 			gameObject.SetActive(false);
 			serverPanel.SetActive(true);

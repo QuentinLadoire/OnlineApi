@@ -35,22 +35,43 @@ public class OnlineManager : MonoBehaviour
 		}
 	}
 	public static ConnectionCallback ConnectionCallback { get => instance.server.connectionCallBack; set => instance.server.connectionCallBack = value; }
+	public static ConnectionCallback DisconnectionCallBack { get => instance.server.disConnectionCallBack; set => instance.server.disConnectionCallBack = value; }
 
-	public static void StartServer()
+	public static void CreateServer()
 	{
 		instance.onlineType = OnlineType.Server;
 
 		instance.server = new TcpServer();
-		instance.server.Start();
 	}
+	public static void StartServer()
+	{
+		if (instance.onlineType == OnlineType.Server)
+		{
+			instance.server.Start();
+		}
+	}
+
 	public static bool ConnectClient()
 	{
 		instance.onlineType = OnlineType.Client;
 
 		instance.client = new TcpClient();
-		LogCallback += (string log) => { Debug.Log(log); };
 
 		return instance.client.ConnectTo(IPAddress.Parse("192.168.1.14"), 8000);
+	}
+
+	public static Client GetClientInfo()
+	{
+		if (instance.onlineType == OnlineType.Server)
+		{
+			return instance.server.GetClientInfo();
+		}
+		else if (instance.onlineType == OnlineType.Client)
+		{
+			return instance.client.GetClientInfo();
+		}
+
+		return null;
 	}
 
 	public static void DisconnectClient()
@@ -74,6 +95,11 @@ public class OnlineManager : MonoBehaviour
 		else if (onlineType == OnlineType.Client)
 		{
 			client.Update();
+
+			if (Input.GetKeyDown(KeyCode.M))
+			{
+				client.SendMsg();
+			}
 		}
 	}
 }

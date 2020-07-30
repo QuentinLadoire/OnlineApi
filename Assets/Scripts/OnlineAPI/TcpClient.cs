@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 
 public class TcpClient
 {
@@ -14,15 +15,26 @@ public class TcpClient
         socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
     }
 
+    public Client GetClientInfo()
+	{
+        return new Client(socket);
+	}
+
     public bool ConnectTo(IPAddress serverAddress, int serverPort)
 	{
         socket.Connect(serverAddress, serverPort);
+
         return socket.Connected;
 	}
-    
+
+    public void SendMsg()
+	{
+        socket.Send(Encoding.UTF8.GetBytes("SendMessage"));
+	}
+
     public void Update()
 	{
-        logCallback("Connected Socket : " + socket.Connected);
+        
     }
 
     public void Close()

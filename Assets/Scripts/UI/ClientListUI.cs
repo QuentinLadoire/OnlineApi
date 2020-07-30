@@ -27,7 +27,7 @@ public class ClientListUI : MonoBehaviour
 		if (toRemove != null)
 		{
 			clientInfos.Remove(toRemove);
-			Destroy(toRemove);
+			Destroy(toRemove.gameObject);
 
 			for (int i = 0; i < clientInfos.Count; i++)
 			{
