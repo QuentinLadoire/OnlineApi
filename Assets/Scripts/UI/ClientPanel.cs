@@ -12,7 +12,7 @@ public class ClientPanel : MonoBehaviour
 
 	private void Start()
 	{
-		var tmp = OnlineManager.GetClientInfo();
+		var tmp = OnlineManager.GetSocketInfo();
 		clientInfoUI.SetIpAndPort(tmp.LocalIpAddress.ToString(), tmp.LocalPort.ToString());
 		connectedServerInfoUI.SetIpAndPort(tmp.RemoteIpAddress.ToString(), tmp.RemotePort.ToString());
 

@@ -15,9 +15,9 @@ public class TcpClient
         socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
     }
 
-    public Client GetClientInfo()
+    public SocketInfo GetSocketInfo()
 	{
-        return new Client(socket);
+        return new SocketInfo(socket);
 	}
 
     public bool ConnectTo(IPAddress serverAddress, int serverPort)

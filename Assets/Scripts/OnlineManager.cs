@@ -60,20 +60,27 @@ public class OnlineManager : MonoBehaviour
 		return instance.client.ConnectTo(IPAddress.Parse("192.168.1.14"), 8000);
 	}
 
-	public static Client GetClientInfo()
+	public static SocketInfo GetSocketInfo()
 	{
 		if (instance.onlineType == OnlineType.Server)
 		{
-			return instance.server.GetClientInfo();
+			return instance.server.GetSocketInfo();
 		}
 		else if (instance.onlineType == OnlineType.Client)
 		{
-			return instance.client.GetClientInfo();
+			return instance.client.GetSocketInfo();
 		}
 
 		return null;
 	}
 
+	public static void StopServer()
+	{
+		if (instance.onlineType == OnlineType.Server)
+		{
+			instance.server.Close();
+		}
+	}
 	public static void DisconnectClient()
 	{
 		if (instance.onlineType == OnlineType.Client)

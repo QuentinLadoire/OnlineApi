@@ -13,12 +13,12 @@ public class ServerPanel : MonoBehaviour
 	{
 		OnlineManager.ConnectionCallback += (Client client) =>
 		{
-			clientListUI.AddClient(client.RemoteIpAddress.ToString(), client.RemotePort.ToString());
+			clientListUI.AddClient(client.SocketInfo.RemoteIpAddress.ToString(), client.SocketInfo.RemotePort.ToString());
 		};
 
 		OnlineManager.DisconnectionCallBack += (Client client) =>
 		{
-			clientListUI.RemoveClient(client.RemoteIpAddress.ToString(), client.RemotePort.ToString());
+			clientListUI.RemoveClient(client.SocketInfo.RemoteIpAddress.ToString(), client.SocketInfo.RemotePort.ToString());
 		};
 
 		OnlineManager.LogCallback += (string log) =>
@@ -28,7 +28,7 @@ public class ServerPanel : MonoBehaviour
 
 		OnlineManager.StartServer();
 
-		var tmp = OnlineManager.GetClientInfo();
+		var tmp = OnlineManager.GetSocketInfo();
 		serverInfoUI.SetIpAndPort(tmp.LocalIpAddress.ToString(), tmp.LocalPort.ToString());
 	}
 }
