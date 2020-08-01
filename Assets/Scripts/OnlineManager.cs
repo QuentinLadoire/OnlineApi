@@ -50,6 +50,13 @@ public class OnlineManager : MonoBehaviour
 			instance.server.Start();
 		}
 	}
+	public static void StopServer()
+	{
+		if (instance.onlineType == OnlineType.Server)
+		{
+			instance.server.Close();
+		}
+	}
 
 	public static bool ConnectClient()
 	{
@@ -58,6 +65,13 @@ public class OnlineManager : MonoBehaviour
 		instance.client = new TcpClient();
 
 		return instance.client.ConnectTo(IPAddress.Parse("192.168.1.14"), 8000);
+	}
+	public static void DisconnectClient()
+	{
+		if (instance.onlineType == OnlineType.Client)
+		{
+			instance.client.Close();
+		}
 	}
 
 	public static SocketInfo GetSocketInfo()
@@ -74,20 +88,6 @@ public class OnlineManager : MonoBehaviour
 		return null;
 	}
 
-	public static void StopServer()
-	{
-		if (instance.onlineType == OnlineType.Server)
-		{
-			instance.server.Close();
-		}
-	}
-	public static void DisconnectClient()
-	{
-		if (instance.onlineType == OnlineType.Client)
-		{
-			instance.client.Close();
-		}
-	}
 
 	private void Awake()
 	{

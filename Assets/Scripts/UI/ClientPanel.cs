@@ -5,6 +5,7 @@ using UnityEngine.UI;
 
 public class ClientPanel : MonoBehaviour
 {
+	[SerializeField] MenuPanelUI menuPanel = null;
 	[SerializeField] ClientInfoUI clientInfoUI = null;
 	[SerializeField] ClientInfoUI connectedServerInfoUI = null;
     [SerializeField] Button disConnectedButton = null;
@@ -19,6 +20,9 @@ public class ClientPanel : MonoBehaviour
 		disConnectedButton.onClick.AddListener(() =>
 		{
 			OnlineManager.DisconnectClient();
+
+			gameObject.SetActive(false);
+			menuPanel.gameObject.SetActive(true);
 		});
 
 		OnlineManager.LogCallback += (string log) =>

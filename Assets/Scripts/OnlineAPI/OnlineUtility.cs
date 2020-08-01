@@ -33,4 +33,14 @@ public static class OnlineUtility
 
 		return null;
 	}
+
+	public static bool IsConnectedSocket(Socket socket)
+	{
+		if (socket.Poll(1000, SelectMode.SelectRead) && socket.Available == 0)
+		{
+			return false;
+		}
+
+		return true;
+	}
 }

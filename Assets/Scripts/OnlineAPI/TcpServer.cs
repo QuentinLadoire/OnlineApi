@@ -7,6 +7,8 @@ using System.Text;
 
 public class TcpServer
 {
+	static TcpServer instance = null;
+
 	public IPAddress Address { get; private set; }
 	public int Port { get; private set; }
 
@@ -16,14 +18,14 @@ public class TcpServer
 	public ConnectionCallback disConnectionCallBack = (Client client) => { };
 	public MsgCallBack receiveMsg = (Message msg) => { };
 
-	int idGenerator = 0;
-
 	Socket socket = null;
+
+	int idGenerator = 0;
 
 	volatile bool shutdown = false;
 
-	Thread threadStopRequested = null;
 	Thread threadConnection = null;
+	Thread threadStopRequested = null;
 
 	Queue<Client> newConnectedClientQueue = new Queue<Client>();
 	readonly object newConnectedClientQueueLock = new object();
@@ -37,6 +39,16 @@ public class TcpServer
 	Queue<Message> msgQueue = new Queue<Message>();
 	readonly object msgQueueLock = new object();
 
+	Queue<string> logQueue = new Queue<string>();
+	readonly object logQueueLock = new object();
+
+	public static void Log(string log)
+	{
+		lock (instance.logQueueLock)
+		{
+			instance.logQueue.Enqueue(log);
+		}
+	}
 
 	public TcpServer(int port = 8000)
 	{
@@ -44,24 +56,8 @@ public class TcpServer
 		Port = port;
 
 		socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-	}
 
-	public int GenerateId()
-	{
-		var id = idGenerator;
-		idGenerator++;
-
-		return id;
-	}
-
-	bool IsConnectedSocket(Socket socket)
-	{
-		if (socket.Poll(1000, SelectMode.SelectRead) && socket.Available == 0)
-		{
-			return false;
-		}
-
-		return true;
+		instance = this;
 	}
 
 	public SocketInfo GetSocketInfo()
@@ -69,28 +65,43 @@ public class TcpServer
 		return new SocketInfo(socket);
 	}
 
+	int GenerateId()
+	{
+		var id = idGenerator;
+		idGenerator++;
+
+		return id;
+	}
+
 	void AcceptConnection()
 	{
 		while (!shutdown)
 		{
-			var acceptedSocket = socket.Accept();
-			if (acceptedSocket != null)
+			try
 			{
-				var newClient = new Client(GenerateId(), acceptedSocket, new ReceiveMsgThread(ReceiveMsg), new CheckConnectionThread(CheckSocketConnection));
-				lock (connectedClientsLock)
+				var acceptedSocket = socket.Accept();
+				if (acceptedSocket != null)
 				{
-					connectedClients.Add(newClient);
+					var newClient = new Client(GenerateId(), acceptedSocket, new ReceiveMsgThread(ReceiveMsg), new CheckConnectionThread(CheckSocketConnection));
+					lock (connectedClientsLock)
+					{
+						connectedClients.Add(newClient);
+					}
+					lock (newConnectedClientQueueLock)
+					{
+						newConnectedClientQueue.Enqueue(newClient);
+					}
 				}
-				lock (newConnectedClientQueueLock)
-				{
-					newConnectedClientQueue.Enqueue(newClient);
-				}
+			}
+			catch
+			{
+				Log("Connexion Abort");
 			}
 		}
 	}
 	void CheckSocketConnection(Client client)
 	{
-		while (!shutdown || !client.Shutdown)
+		while (!shutdown && !client.Shutdown)
 		{
 			if (client.Socket != null)
 			{
@@ -98,7 +109,7 @@ public class TcpServer
 				{
 					if (connectedClients.Contains(client))
 					{
-						if (!IsConnectedSocket(client.Socket))
+						if (!OnlineUtility.IsConnectedSocket(client.Socket))
 						{
 							connectedClients.Remove(client);
 
@@ -115,7 +126,7 @@ public class TcpServer
 	void ReceiveMsg(Client client)
 	{
 		byte[] buffer = new byte[256];
-		while (!shutdown || !client.Shutdown)
+		while (!shutdown && !client.Shutdown)
 		{
 			if (client.Socket != null)
 			{
@@ -130,52 +141,10 @@ public class TcpServer
 			}
 		}
 	}
-
-	void ProcessNewConnectedClient()
-	{
-		if (Monitor.TryEnter(newConnectedClientQueueLock))
-		{
-			if (newConnectedClientQueue.Count > 0)
-			{
-				connectionCallBack(newConnectedClientQueue.Dequeue());
-			}
-
-			Monitor.Exit(newConnectedClientQueueLock);
-		}
-	}
-	void ProcessDisConnectedClient()
-	{
-		if (Monitor.TryEnter(clientToRemoveQueueLock))
-		{
-			if (clientToRemoveQueue.Count > 0)
-			{
-				var clientToRemove = clientToRemoveQueue.Dequeue();
-				clientToRemove.CloseConnection();
-
-				disConnectionCallBack(clientToRemove);
-			}
-
-			Monitor.Exit(clientToRemoveQueueLock);
-		}
-	}
-	void ProcessMsg()
-	{
-		if (Monitor.TryEnter(msgQueueLock))
-		{
-			if (msgQueue.Count > 0)
-			{
-				var msg = msgQueue.Dequeue();
-				receiveMsg(msg);
-
-				logCallback("Client " + msg.Id + " : " + Encoding.UTF8.GetString(msg.Bytes));
-			}
-
-			Monitor.Exit(msgQueueLock);
-		}
-	}
-	
 	void StopRequested()
 	{
+		threadConnection.Join();
+
 		lock (connectedClientsLock)
 		{
 			foreach (var client in connectedClients)
@@ -199,6 +168,64 @@ public class TcpServer
 		}
 	}
 
+	void ProcessNewConnectedClient()
+	{
+		if (Monitor.TryEnter(newConnectedClientQueueLock))
+		{
+			if (newConnectedClientQueue.Count > 0)
+			{
+				connectionCallBack(newConnectedClientQueue.Dequeue());
+			}
+
+			Monitor.Exit(newConnectedClientQueueLock);
+		}
+	}
+	void ProcessDisConnectedClient()
+	{
+		if (Monitor.TryEnter(clientToRemoveQueueLock))
+		{
+			if (clientToRemoveQueue.Count > 0)
+			{
+				var clientToRemove = clientToRemoveQueue.Dequeue();
+
+				logCallback("Client " + clientToRemove.Id + " Disconnected");
+
+				clientToRemove.CloseConnection();
+		
+				disConnectionCallBack(clientToRemove);
+			}
+		
+			Monitor.Exit(clientToRemoveQueueLock);
+		}
+	}
+	void ProcessMsg()
+	{
+		if (Monitor.TryEnter(msgQueueLock))
+		{
+			if (msgQueue.Count > 0)
+			{
+				var msg = msgQueue.Dequeue();
+				receiveMsg(msg);
+
+				logCallback("Client " + msg.Id + " : " + Encoding.UTF8.GetString(msg.Bytes));
+			}
+
+			Monitor.Exit(msgQueueLock);
+		}
+	}
+	void ProcessLog()
+	{
+		if (Monitor.TryEnter(logQueueLock))
+		{
+			if (logQueue.Count > 0)
+			{
+				logCallback(logQueue.Dequeue());
+			}
+
+			Monitor.Exit(logQueueLock);
+		}
+	}
+	
 	public void Start()
 	{
 		socket.Bind(new IPEndPoint(Address, Port));
@@ -209,23 +236,23 @@ public class TcpServer
 
 		logCallback("Server Start");
 	}
-
 	public void Update()
 	{
-		if (shutdown) return;
+		if (!shutdown)
+		{
+			ProcessNewConnectedClient();
 
-		ProcessNewConnectedClient();
+			ProcessDisConnectedClient();
 
-		ProcessDisConnectedClient();
+			ProcessMsg();
+		}
 
-		ProcessMsg();
+		ProcessLog();
 	}
-
 	public void Close()
 	{
 		shutdown = true;
 
-		socket.Shutdown(SocketShutdown.Both);
 		socket.Close();
 
 		threadStopRequested = new Thread(new ThreadStart(StopRequested));
