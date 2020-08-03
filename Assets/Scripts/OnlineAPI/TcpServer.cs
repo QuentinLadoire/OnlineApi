@@ -16,7 +16,8 @@ public class TcpServer
 
 	public ConnectionCallback connectionCallBack = (Client client) => { };
 	public ConnectionCallback disConnectionCallBack = (Client client) => { };
-	public MsgCallBack receiveMsg = (Message msg) => { };
+	public MsgCallBack receiveMsgCallBack = (byte[] msg) => { };
+	public MsgCallBack sendingMsgCallBack = (byte[] msg) => { };
 
 	Socket socket = null;
 
@@ -36,8 +37,11 @@ public class TcpServer
 	List<Client> connectedClients = new List<Client>();
 	readonly object connectedClientsLock = new object();
 
-	Queue<Message> msgQueue = new Queue<Message>();
-	readonly object msgQueueLock = new object();
+	Queue<Message> receiveMsgQueue = new Queue<Message>();
+	readonly object receiveMsgQueueLock = new object();
+
+	Queue<byte[]> sendMsgQueue = new Queue<byte[]>();
+	readonly object sendMsgQueueLock = new object();
 
 	Queue<string> logQueue = new Queue<string>();
 	readonly object logQueueLock = new object();
@@ -48,6 +52,14 @@ public class TcpServer
 		{
 			instance.logQueue.Enqueue(log);
 		}
+	}
+	public static void AddSendingMsgCallBack(MsgCallBack msgCallBack)
+	{
+		instance.sendingMsgCallBack += msgCallBack;
+	}
+	public static void RemoveSendindMsgCallBack(MsgCallBack msgCallBack)
+	{
+		instance.sendingMsgCallBack -= msgCallBack;
 	}
 
 	public TcpServer(int port = 8000)
@@ -82,7 +94,7 @@ public class TcpServer
 				var acceptedSocket = socket.Accept();
 				if (acceptedSocket != null)
 				{
-					var newClient = new Client(GenerateId(), acceptedSocket, new ReceiveMsgThread(ReceiveMsg), new CheckConnectionThread(CheckSocketConnection));
+					var newClient = new Client(GenerateId(), acceptedSocket, ReceiveMsg, CheckSocketConnection);
 					lock (connectedClientsLock)
 					{
 						connectedClients.Add(newClient);
@@ -105,19 +117,19 @@ public class TcpServer
 		{
 			if (client.Socket != null)
 			{
+				bool tmp = false;
 				lock (connectedClientsLock)
 				{
-					if (connectedClients.Contains(client))
-					{
-						if (!OnlineUtility.IsConnectedSocket(client.Socket))
-						{
-							connectedClients.Remove(client);
+					tmp = connectedClients.Contains(client);
+				}
 
-							lock (clientToRemoveQueueLock)
-							{
-								clientToRemoveQueue.Enqueue(client);
-							}
-						}
+				if (tmp && !OnlineUtility.IsConnectedSocket(client.Socket))
+				{
+					connectedClients.Remove(client);
+
+					lock (clientToRemoveQueueLock)
+					{
+						clientToRemoveQueue.Enqueue(client);
 					}
 				}
 			}
@@ -128,17 +140,33 @@ public class TcpServer
 		byte[] buffer = new byte[256];
 		while (!shutdown && !client.Shutdown)
 		{
-			if (client.Socket != null)
+			try
 			{
-				int byteCount = client.Socket.Receive(buffer);
-				if (byteCount > 0)
+				if (client.Socket != null)
 				{
-					lock (msgQueueLock)
+					int byteCount = client.Socket.Receive(buffer);
+					if (byteCount > 0)
 					{
-						msgQueue.Enqueue(new Message(client.Id, buffer, byteCount));
+						lock (receiveMsgQueueLock)
+						{
+							receiveMsgQueue.Enqueue(new Message(client.Id, buffer, byteCount));
+						}
 					}
 				}
 			}
+			catch
+			{
+				Log("Receive Abort");
+			}
+		}
+	}
+	void AddMsgToSendingQueue(object bytesObject)
+	{
+		lock (sendMsgQueueLock)
+		{
+			var bytes = bytesObject as byte[];
+
+			sendMsgQueue.Enqueue(bytes);
 		}
 	}
 	void StopRequested()
@@ -151,6 +179,8 @@ public class TcpServer
 			{
 				client.CloseConnection();
 			}
+
+			connectedClients.Clear();
 		}
 		lock (clientToRemoveQueueLock)
 		{
@@ -158,6 +188,8 @@ public class TcpServer
 			{
 				client.CloseConnection();
 			}
+
+			clientToRemoveQueue.Clear();
 		}
 		lock(newConnectedClientQueueLock)
 		{
@@ -165,7 +197,11 @@ public class TcpServer
 			{
 				client.CloseConnection();
 			}
+
+			newConnectedClientQueue.Clear();
 		}
+
+		Log("Server Stop");
 	}
 
 	void ProcessNewConnectedClient()
@@ -198,19 +234,31 @@ public class TcpServer
 			Monitor.Exit(clientToRemoveQueueLock);
 		}
 	}
-	void ProcessMsg()
+	void ProcessReceiveMsg()
 	{
-		if (Monitor.TryEnter(msgQueueLock))
+		if (Monitor.TryEnter(receiveMsgQueueLock))
 		{
-			if (msgQueue.Count > 0)
+			if (receiveMsgQueue.Count > 0)
 			{
-				var msg = msgQueue.Dequeue();
-				receiveMsg(msg);
+				var msg = receiveMsgQueue.Dequeue();
+				receiveMsgCallBack(msg.Bytes);
 
 				logCallback("Client " + msg.Id + " : " + Encoding.UTF8.GetString(msg.Bytes));
 			}
 
-			Monitor.Exit(msgQueueLock);
+			Monitor.Exit(receiveMsgQueueLock);
+		}
+	}
+	void ProcessSendingMsg()
+	{
+		if (Monitor.TryEnter(sendMsgQueueLock))
+		{
+			if (sendMsgQueue.Count > 0)
+			{
+				sendingMsgCallBack(sendMsgQueue.Dequeue());
+			}
+
+			Monitor.Exit(sendMsgQueueLock);
 		}
 	}
 	void ProcessLog()
@@ -226,6 +274,11 @@ public class TcpServer
 		}
 	}
 	
+	public void SendMsg(byte[] bytes)
+	{
+		ThreadPool.QueueUserWorkItem(AddMsgToSendingQueue, bytes);
+	}
+
 	public void Start()
 	{
 		socket.Bind(new IPEndPoint(Address, Port));
@@ -244,7 +297,9 @@ public class TcpServer
 
 			ProcessDisConnectedClient();
 
-			ProcessMsg();
+			ProcessReceiveMsg();
+
+			ProcessSendingMsg();
 		}
 
 		ProcessLog();

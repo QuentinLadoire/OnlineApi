@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Net;
+using System.Text;
 using UnityEngine;
 
 public enum OnlineType
@@ -57,6 +58,14 @@ public class OnlineManager : MonoBehaviour
 			instance.server.Close();
 		}
 	}
+	public static void DestroyServer()
+	{
+		if (instance.onlineType == OnlineType.Server)
+		{
+			instance.server = null;
+			instance.onlineType = OnlineType.None;
+		}
+	}
 
 	public static bool ConnectClient()
 	{
@@ -71,7 +80,18 @@ public class OnlineManager : MonoBehaviour
 		if (instance.onlineType == OnlineType.Client)
 		{
 			instance.client.Close();
+			instance.client = null;
+			instance.onlineType = OnlineType.None;
 		}
+	}
+	public static bool ClientIsDisconnected()
+	{
+		if (instance.onlineType == OnlineType.Client)
+		{
+			return instance.client.IsConnected;
+		}
+
+		return false;
 	}
 
 	public static SocketInfo GetSocketInfo()
@@ -98,6 +118,11 @@ public class OnlineManager : MonoBehaviour
 		if (onlineType == OnlineType.Server)
 		{
 			server.Update();
+
+			if (Input.GetKeyDown(KeyCode.M))
+			{
+				server.SendMsg(Encoding.UTF8.GetBytes("Je suis le server !!!"));
+			}
 		}
 		else if (onlineType == OnlineType.Client)
 		{
@@ -105,7 +130,7 @@ public class OnlineManager : MonoBehaviour
 
 			if (Input.GetKeyDown(KeyCode.M))
 			{
-				client.SendMsg();
+				client.SendMsg(Encoding.UTF8.GetBytes("Je suis un client !!!"));
 			}
 		}
 	}

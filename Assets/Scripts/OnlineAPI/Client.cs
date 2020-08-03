@@ -1,7 +1,5 @@
-﻿
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using System.Threading;
-using UnityEngine;
 
 public class Client
 {
@@ -19,18 +17,30 @@ public class Client
 	volatile bool shutdown = false;
 	public bool Shutdown { get => shutdown; }
 
+	void SendMsg(byte[] msg)
+	{
+		Socket.Send(msg);
+	}
+
 	void RequestedClose()
 	{
 		ThreadCheckConnection.Join();
-		ThreadReceiveMsg.Join();
 
-		Socket.Shutdown(SocketShutdown.Both);
-		Socket.Close();
+		try
+		{
+			Socket.Shutdown(SocketShutdown.Both);
+		}
+		finally
+		{
+			Socket.Close();
+		}
 	}
 
 	public void CloseConnection()
 	{
 		shutdown = true;
+
+		TcpServer.RemoveSendindMsgCallBack(SendMsg);
 
 		threadRequestedClose = new Thread(new ThreadStart(RequestedClose));
 		threadRequestedClose.Start();
@@ -51,5 +61,7 @@ public class Client
 
 		ThreadCheckConnection = new Thread(new ThreadStart(() => { checkConnectionThread(this); }));
 		ThreadCheckConnection.Start();
+
+		TcpServer.AddSendingMsgCallBack(SendMsg);
 	}
 }

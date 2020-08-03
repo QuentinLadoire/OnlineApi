@@ -8,16 +8,12 @@ public class ClientPanel : MonoBehaviour
 	[SerializeField] MenuPanelUI menuPanel = null;
 	[SerializeField] ClientInfoUI clientInfoUI = null;
 	[SerializeField] ClientInfoUI connectedServerInfoUI = null;
-    [SerializeField] Button disConnectedButton = null;
+	[SerializeField] Button quitButton = null;
 	[SerializeField] LogViewUI logViewUI = null;
 
 	private void Start()
 	{
-		var tmp = OnlineManager.GetSocketInfo();
-		clientInfoUI.SetIpAndPort(tmp.LocalIpAddress.ToString(), tmp.LocalPort.ToString());
-		connectedServerInfoUI.SetIpAndPort(tmp.RemoteIpAddress.ToString(), tmp.RemotePort.ToString());
-
-		disConnectedButton.onClick.AddListener(() =>
+		quitButton.onClick.AddListener(() =>
 		{
 			OnlineManager.DisconnectClient();
 
@@ -29,5 +25,12 @@ public class ClientPanel : MonoBehaviour
 		{
 			logViewUI.AddLog(log);
 		};
+	}
+
+	private void OnEnable()
+	{
+		var tmp = OnlineManager.GetSocketInfo();
+		clientInfoUI.SetIpAndPort(tmp.LocalIpAddress.ToString(), tmp.LocalPort.ToString());
+		connectedServerInfoUI.SetIpAndPort(tmp.RemoteIpAddress.ToString(), tmp.RemotePort.ToString());
 	}
 }

@@ -6,6 +6,8 @@ using UnityEngine.UI;
 
 public class ServerPanel : MonoBehaviour
 {
+	public MenuPanelUI menuPanel = null;
+	public Button quitButton = null;
 	public Button stopButton = null;
 	public ClientInfoUI serverInfoUI = null;
     public ClientListUI clientListUI = null;
@@ -13,6 +15,14 @@ public class ServerPanel : MonoBehaviour
 
 	private void Start()
 	{
+		quitButton.onClick.AddListener(() =>
+		{
+			OnlineManager.DestroyServer();
+
+			gameObject.SetActive(false);
+			menuPanel.gameObject.SetActive(true);
+		});
+
 		stopButton.onClick.AddListener(() =>
 		{
 			OnlineManager.StopServer();
@@ -32,7 +42,10 @@ public class ServerPanel : MonoBehaviour
 		{
 			logViewUI.AddLog(log);
 		};
+	}
 
+	private void OnEnable()
+	{
 		OnlineManager.StartServer();
 
 		var tmp = OnlineManager.GetSocketInfo();
