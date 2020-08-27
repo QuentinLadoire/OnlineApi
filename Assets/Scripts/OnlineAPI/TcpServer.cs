@@ -287,6 +287,8 @@ public class TcpServer
 		threadConnection = new Thread(new ThreadStart(AcceptConnection));
 		threadConnection.Start();
 
+		shutdown = false;
+
 		logCallback("Server Start");
 	}
 	public void Update()

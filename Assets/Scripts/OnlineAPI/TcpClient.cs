@@ -142,6 +142,8 @@ public class TcpClient
 
 			threadCheckConnection = new Thread(new ThreadStart(CheckSocketConnection));
 			threadCheckConnection.Start();
+
+			shutdown = false;
 		}
 
         return socket.Connected;
