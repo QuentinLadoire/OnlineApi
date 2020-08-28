@@ -6,21 +6,28 @@ public static class ExtensionFunction
 {
 	public static void OnlineInstantiate(this UnityEngine.Object obj, GameObject gameObject, Vector3 position, Quaternion rotation)
 	{
-		var info = new InstantiateObjectInfo(gameObject, position, rotation, OnlineObjectManager.GenerateId());
-		var bytes = BitConverter.GetBytes((int)MsgType.InstantiateObject).Concat(info.Serialize()).ToArray();
+		InstantiateObjectInfo info = null;
 
+		if (OnlineManager.IsHost()) info = new InstantiateObjectInfo(gameObject, position, rotation, OnlineObjectManager.GenerateId());
+		else info = new InstantiateObjectInfo(gameObject, position, rotation, -1);
+
+		var bytes = BitConverter.GetBytes((int)MsgProtocol.InstantiateObject).Concat(info.Serialize()).ToArray();
 		OnlineManager.SendMsg(bytes);
 
-		OnlineManager.Instantiate(info);
+		if (OnlineManager.IsHost()) OnlineManager.Instantiate(info);
 	}
 
-	public static void OnlineDestroy(this UnityEngine.Object obj, int id)
+	public static void OnlineDestroy(this UnityEngine.Object obj, GameObject gameObject)
 	{
-		var info = new DestroyObjectInfo(id);
-		var bytes = BitConverter.GetBytes((int)MsgType.DestroyObject).Concat(info.Serialize()).ToArray();
+		var onlineId = gameObject.GetComponent<OnlineIdentifiant>();
+		if (onlineId != null)
+		{
+			var info = new DestroyObjectInfo(onlineId.Id);
+			var bytes = BitConverter.GetBytes((int)MsgProtocol.DestroyObject).Concat(info.Serialize()).ToArray();
 
-		OnlineManager.SendMsg(bytes);
+			OnlineManager.SendMsg(bytes);
 
-		OnlineManager.Destroy(info);
+			if (OnlineManager.IsHost()) OnlineManager.Destroy(info);
+		}
 	}
 }

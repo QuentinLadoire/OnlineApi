@@ -13,7 +13,7 @@ public enum OnlineType
 	Client
 }
 
-public enum MsgType
+public enum MsgProtocol
 {
 	None = -1,
 	InstantiateObject,
@@ -236,7 +236,7 @@ public class OnlineManager : MonoBehaviour
 		}
 		else if (instance.onlineType == OnlineType.Client)
 		{
-			instance.server.SendMsg(bytes);
+			instance.client.SendMsg(bytes);
 		}
 	}
 
@@ -254,22 +254,34 @@ public class OnlineManager : MonoBehaviour
 
 	void ServerReceiveMsgCallback(byte[] bytes)
 	{
+		var msgType = (MsgProtocol)BitConverter.ToInt32(bytes, 0);
+		switch (msgType)
+		{
+			case MsgProtocol.InstantiateObject:
+				var instantiateInfo = new InstantiateObjectInfo(bytes.Skip(sizeof(int)).ToArray());
+				this.OnlineInstantiate(instantiateInfo.GameObject, instantiateInfo.Position, instantiateInfo.Rotation);
+				break;
 
+			case MsgProtocol.DestroyObject:
+				var destroyInfo = new DestroyObjectInfo(bytes.Skip(sizeof(int)).ToArray());
+				this.OnlineDestroy(OnlineObjectManager.GetObjectBy(destroyInfo.Id).gameObject);
+				break;
+		}
 	}
 	void ClientReceiveMsgCallback(byte[] bytes)
 	{
-		var msgType = (MsgType)BitConverter.ToInt32(bytes, 0);
+		var msgType = (MsgProtocol)BitConverter.ToInt32(bytes, 0);
 		switch (msgType)
 		{
-			case MsgType.InstantiateObject:
+			case MsgProtocol.InstantiateObject:
 				Instantiate(new InstantiateObjectInfo(bytes.Skip(sizeof(int)).ToArray()));
 				break;
 
-			case MsgType.DestroyObject:
+			case MsgProtocol.DestroyObject:
 				Destroy(new DestroyObjectInfo(bytes.Skip(sizeof(int)).ToArray()));
 				break;
 
-			case MsgType.None:
+			case MsgProtocol.None:
 				break;
 		}
 	}
