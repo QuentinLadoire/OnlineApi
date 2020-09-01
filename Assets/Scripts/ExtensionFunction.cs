@@ -4,12 +4,12 @@ using UnityEngine;
 
 public static class ExtensionFunction
 {
-	public static void OnlineInstantiate(this UnityEngine.Object obj, GameObject gameObject, Vector3 position, Quaternion rotation)
+	public static void OnlineInstantiate(this UnityEngine.Object obj, GameObject gameObject, Vector3 position, Quaternion rotation, OnlinePlayerId playerOwner)
 	{
 		InstantiateObjectInfo info = null;
 
-		if (OnlineManager.IsHost()) info = new InstantiateObjectInfo(gameObject, position, rotation, OnlineObjectManager.GenerateId());
-		else info = new InstantiateObjectInfo(gameObject, position, rotation, -1);
+		if (OnlineManager.IsHost()) info = new InstantiateObjectInfo(gameObject, position, rotation, OnlineObjectManager.GenerateId(), playerOwner);
+		else info = new InstantiateObjectInfo(gameObject, position, rotation, -1, playerOwner);
 
 		var bytes = BitConverter.GetBytes((int)MsgProtocol.InstantiateObject).Concat(info.Serialize()).ToArray();
 		OnlineManager.SendMsg(bytes);
@@ -22,7 +22,7 @@ public static class ExtensionFunction
 		var onlineId = gameObject.GetComponent<OnlineIdentifiant>();
 		if (onlineId != null)
 		{
-			var info = new DestroyObjectInfo(onlineId.Id);
+			var info = new DestroyObjectInfo(onlineId.ObjectId);
 			var bytes = BitConverter.GetBytes((int)MsgProtocol.DestroyObject).Concat(info.Serialize()).ToArray();
 
 			OnlineManager.SendMsg(bytes);

@@ -4,13 +4,13 @@ using System.Collections.Generic;
 
 public class Message
 {
-	public int Id { get; private set; }
+	public int ClientId { get; private set; }
 
 	public byte[] Bytes { get; private set; }
 
-	public Message(int id, byte[] bytes, int lenght)
+	public Message(int clientId, byte[] bytes, int lenght)
 	{
-		Id = id;
+		ClientId = clientId;
 
 		Bytes = new byte[lenght];
 		Array.Copy(bytes, Bytes, lenght);

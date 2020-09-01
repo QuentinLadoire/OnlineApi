@@ -1,4 +1,5 @@
-﻿using System.Net.Sockets;
+﻿using System.Linq;
+using System.Net.Sockets;
 using System.Threading;
 
 public class Client
@@ -17,9 +18,12 @@ public class Client
 	volatile bool shutdown = false;
 	public bool Shutdown { get => shutdown; }
 
-	void SendMsg(byte[] msg)
+	void SendMsg(MsgInfo msgInfo)
 	{
-		Socket.Send(msg);
+		if (msgInfo.ClientIds == null || msgInfo.ClientIds.Contains(Id))
+		{
+			Socket.Send(msgInfo.Bytes);
+		}
 	}
 
 	void RequestedClose()

@@ -31,7 +31,7 @@ public class OnlineObjectManager
 	}
 	public static OnlineIdentifiant RemoveObject(int id)
 	{
-		var toRemove = Instance.onlineObjects.Find(item => item.Id == id);
+		var toRemove = Instance.onlineObjects.Find(item => item.ObjectId == id);
 		Instance.onlineObjects.Remove(toRemove);
 
 		return toRemove;
@@ -45,7 +45,7 @@ public class OnlineObjectManager
 	{
 		foreach (var obj in Instance.onlineObjects)
 		{
-			if (obj.Id == id) return obj;
+			if (obj.ObjectId == id) return obj;
 		}
 
 		return null;

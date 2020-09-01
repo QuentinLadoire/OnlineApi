@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using UnityEngine;
 
 public enum OnlineType
@@ -13,9 +12,27 @@ public enum OnlineType
 	Client
 }
 
+public enum OnlinePlayerId
+{
+	None = -1,
+	Server,
+	Player1,
+	Player2,
+	Player3,
+	Player4,
+	Player5,
+	Player6,
+	Player7,
+	Player8,
+	Player9,
+	Player10,
+	Count
+}
+
 public enum MsgProtocol
 {
 	None = -1,
+	PlayerConnection,
 	InstantiateObject,
 	DestroyObject
 }
@@ -26,6 +43,7 @@ public class InstantiateObjectInfo
 	public Vector3 Position { get; private set; }
 	public Quaternion Rotation { get; private set; }
 	public int Id { get; private set; }
+	public OnlinePlayerId PlayerOwner { get; private set; }
 
 	public InstantiateObjectInfo()
 	{
@@ -33,13 +51,15 @@ public class InstantiateObjectInfo
 		Position = Vector3.zero;
 		Rotation = Quaternion.identity;
 		Id = -1;
+		PlayerOwner = OnlinePlayerId.None;
 	}
-	public InstantiateObjectInfo(GameObject gameObject, Vector3 position, Quaternion rotation, int id)
+	public InstantiateObjectInfo(GameObject gameObject, Vector3 position, Quaternion rotation, int id, OnlinePlayerId playerOwner)
 	{
 		GameObject = gameObject;
 		Position = position;
 		Rotation = rotation;
 		Id = id;
+		PlayerOwner = playerOwner;
 	}
 	public InstantiateObjectInfo(byte[] bytes)
 	{
@@ -50,6 +70,7 @@ public class InstantiateObjectInfo
 		Position = new Vector3(br.ReadSingle(), br.ReadSingle(), br.ReadSingle());
 		Rotation = new Quaternion(br.ReadSingle(), br.ReadSingle(), br.ReadSingle(), br.ReadSingle());
 		Id = br.ReadInt32();
+		PlayerOwner = (OnlinePlayerId)br.ReadInt32();
 
 		br.Close();
 		ms.Close();
@@ -72,6 +93,8 @@ public class InstantiateObjectInfo
 		bw.Write(Rotation.w);
 
 		bw.Write(Id);
+
+		bw.Write((int)PlayerOwner);
 
 		var bytes = ms.ToArray();
 
@@ -123,8 +146,11 @@ public class DestroyObjectInfo
 public class OnlineManager : MonoBehaviour
 {
 	static OnlineManager instance = null;
+	static OnlinePlayerId playerIdGenerator = OnlinePlayerId.None;
 
 	OnlineType onlineType = OnlineType.None;
+
+	OnlinePlayerId playerId = OnlinePlayerId.None;
 
 	TcpServer server = null;
 	TcpClient client = null;
@@ -150,9 +176,11 @@ public class OnlineManager : MonoBehaviour
 	public static void CreateServer()
 	{
 		instance.onlineType = OnlineType.Server;
+		instance.playerId = GeneratePlayerId();
 
 		instance.server = new TcpServer();
 
+		instance.server.connectionCallBack += instance.ServerConnectionCallback;
 		instance.server.receiveMsgCallBack += instance.ServerReceiveMsgCallback;
 	}
 	public static void StartServer()
@@ -173,6 +201,7 @@ public class OnlineManager : MonoBehaviour
 	{
 		if (instance.onlineType == OnlineType.Server)
 		{
+			instance.server.connectionCallBack -= instance.ServerConnectionCallback;
 			instance.server.receiveMsgCallBack -= instance.ServerReceiveMsgCallback;
 
 			instance.server = null;
@@ -188,7 +217,7 @@ public class OnlineManager : MonoBehaviour
 
 		instance.client.receiveMsgCallBack += instance.ClientReceiveMsgCallback;
 
-		return instance.client.ConnectTo(IPAddress.Parse("192.168.1.14"), 8000);
+		return instance.client.ConnectTo("192.168.1.14", 8000);
 	}
 	public static void DisconnectClient()
 	{
@@ -228,6 +257,14 @@ public class OnlineManager : MonoBehaviour
 	{
 		return instance.onlineType == OnlineType.Server;
 	}
+	public static bool IsOwner(OnlinePlayerId playerId)
+	{
+		return instance.playerId == playerId;
+	}
+	public static OnlinePlayerId GetPlayerId()
+	{
+		return instance.playerId;
+	}
 	public static void SendMsg(byte[] bytes)
 	{
 		if (instance.onlineType == OnlineType.Server)
@@ -239,17 +276,38 @@ public class OnlineManager : MonoBehaviour
 			instance.client.SendMsg(bytes);
 		}
 	}
+	public static void SendMsg(byte[] bytes, int[] clientIds)
+	{
+		if (instance.onlineType == OnlineType.Server)
+		{
+			instance.server.SendMsg(bytes, clientIds);
+		}
+	}
 
 	public static void Instantiate(InstantiateObjectInfo info)
 	{
 		var onlineIdentifiant = Instantiate(info.GameObject, info.Position, info.Rotation).GetComponent<OnlineIdentifiant>();
-		onlineIdentifiant.Set(info.Id);
+		onlineIdentifiant.Set(info.Id, info.PlayerOwner);
 
 		OnlineObjectManager.AddObject(onlineIdentifiant);
 	}
 	public static void Destroy(DestroyObjectInfo info)
 	{
 		OnlineObjectManager.DestroyObject(info.Id);
+	}
+
+	static OnlinePlayerId GeneratePlayerId()
+	{
+		playerIdGenerator++;
+
+		return playerIdGenerator;
+	}
+
+	void ServerConnectionCallback(Client client)
+	{
+		byte[] bytes = BitConverter.GetBytes((int)MsgProtocol.PlayerConnection).Concat(BitConverter.GetBytes((int)GeneratePlayerId())).ToArray();
+
+		SendMsg(bytes, new int[]{ client.Id });
 	}
 
 	void ServerReceiveMsgCallback(byte[] bytes)
@@ -259,7 +317,7 @@ public class OnlineManager : MonoBehaviour
 		{
 			case MsgProtocol.InstantiateObject:
 				var instantiateInfo = new InstantiateObjectInfo(bytes.Skip(sizeof(int)).ToArray());
-				this.OnlineInstantiate(instantiateInfo.GameObject, instantiateInfo.Position, instantiateInfo.Rotation);
+				this.OnlineInstantiate(instantiateInfo.GameObject, instantiateInfo.Position, instantiateInfo.Rotation, instantiateInfo.PlayerOwner);
 				break;
 
 			case MsgProtocol.DestroyObject:
@@ -273,6 +331,10 @@ public class OnlineManager : MonoBehaviour
 		var msgType = (MsgProtocol)BitConverter.ToInt32(bytes, 0);
 		switch (msgType)
 		{
+			case MsgProtocol.PlayerConnection:
+				instance.playerId = (OnlinePlayerId)BitConverter.ToInt32(bytes, sizeof(int));
+				break;
+
 			case MsgProtocol.InstantiateObject:
 				Instantiate(new InstantiateObjectInfo(bytes.Skip(sizeof(int)).ToArray()));
 				break;

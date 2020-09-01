@@ -4,11 +4,20 @@ using UnityEngine;
 
 public class Sphere : MonoBehaviour
 {
+	OnlineIdentifiant onlineId = null;
+
+	private void Awake()
+	{
+		onlineId = GetComponent<OnlineIdentifiant>();
+	}
 	private void Update()
 	{
-		if (Input.GetKeyDown(KeyCode.Delete))
+		if (OnlineManager.IsOwner(onlineId.PlayerOwner))
 		{
-			this.OnlineDestroy(gameObject);
+			if (Input.GetKeyDown(KeyCode.Delete))
+			{
+				this.OnlineDestroy(gameObject);
+			}
 		}
 	}
 }

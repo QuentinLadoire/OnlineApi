@@ -5,6 +5,18 @@ using System.Net;
 using System.Threading;
 using System.Text;
 
+public class MsgInfo
+{
+	public byte[] Bytes { get; private set; }
+	public int[] ClientIds { get; private set; }
+
+	public MsgInfo(byte[] bytes, int[] clientIds)
+	{
+		Bytes = bytes;
+		ClientIds = clientIds;
+	}
+}
+
 public class TcpServer
 {
 	static TcpServer instance = null;
@@ -17,7 +29,7 @@ public class TcpServer
 	public ConnectionCallback connectionCallBack = (Client client) => { };
 	public ConnectionCallback disConnectionCallBack = (Client client) => { };
 	public MsgCallBack receiveMsgCallBack = (byte[] msg) => { };
-	public MsgCallBack sendingMsgCallBack = (byte[] msg) => { };
+	public SendingMsgCallBack sendingMsgCallBack = (MsgInfo msgInfo) => { };
 
 	Socket socket = null;
 
@@ -40,7 +52,7 @@ public class TcpServer
 	Queue<Message> receiveMsgQueue = new Queue<Message>();
 	readonly object receiveMsgQueueLock = new object();
 
-	Queue<byte[]> sendMsgQueue = new Queue<byte[]>();
+	Queue<MsgInfo> sendMsgQueue = new Queue<MsgInfo>();
 	readonly object sendMsgQueueLock = new object();
 
 	Queue<string> logQueue = new Queue<string>();
@@ -53,11 +65,11 @@ public class TcpServer
 			instance.logQueue.Enqueue(log);
 		}
 	}
-	public static void AddSendingMsgCallBack(MsgCallBack msgCallBack)
+	public static void AddSendingMsgCallBack(SendingMsgCallBack msgCallBack)
 	{
 		instance.sendingMsgCallBack += msgCallBack;
 	}
-	public static void RemoveSendindMsgCallBack(MsgCallBack msgCallBack)
+	public static void RemoveSendindMsgCallBack(SendingMsgCallBack msgCallBack)
 	{
 		instance.sendingMsgCallBack -= msgCallBack;
 	}
@@ -160,13 +172,13 @@ public class TcpServer
 			}
 		}
 	}
-	void AddMsgToSendingQueue(object bytesObject)
+	void AddMsgToSendingQueue(object msgInfoObject)
 	{
 		lock (sendMsgQueueLock)
 		{
-			var bytes = bytesObject as byte[];
+			var msgInfo = msgInfoObject as MsgInfo;
 
-			sendMsgQueue.Enqueue(bytes);
+			sendMsgQueue.Enqueue(msgInfo);
 		}
 	}
 	void StopRequested()
@@ -243,7 +255,7 @@ public class TcpServer
 				var msg = receiveMsgQueue.Dequeue();
 				receiveMsgCallBack(msg.Bytes);
 
-				logCallback("Client " + msg.Id + " : " + Encoding.UTF8.GetString(msg.Bytes));
+				logCallback("Client " + msg.ClientId + " : " + Encoding.UTF8.GetString(msg.Bytes));
 			}
 
 			Monitor.Exit(receiveMsgQueueLock);
@@ -273,10 +285,10 @@ public class TcpServer
 			Monitor.Exit(logQueueLock);
 		}
 	}
-	
-	public void SendMsg(byte[] bytes)
+
+	public void SendMsg(byte[] bytes, int[] clientIds = null)
 	{
-		ThreadPool.QueueUserWorkItem(AddMsgToSendingQueue, bytes);
+		ThreadPool.QueueUserWorkItem(AddMsgToSendingQueue, new MsgInfo(bytes, clientIds));
 	}
 
 	public void Start()

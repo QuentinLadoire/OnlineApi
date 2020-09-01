@@ -130,9 +130,9 @@ public class TcpClient
         socket.Send(bytes);
 	}
 
-    public bool ConnectTo(IPAddress serverAddress, int serverPort)
+    public bool ConnectTo(string serverIp, int serverPort)
 	{
-        socket.Connect(serverAddress, serverPort);
+        socket.Connect(IPAddress.Parse(serverIp), serverPort);
 		if (socket.Connected)
 		{
 			isConnected = true;

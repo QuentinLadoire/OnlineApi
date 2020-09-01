@@ -4,10 +4,12 @@ using UnityEngine;
 
 public class OnlineIdentifiant : MonoBehaviour
 {
-    public int Id { get; private set; }
+    public int ObjectId { get; private set; }
+	public OnlinePlayerId PlayerOwner { get; private set; }
 
-    public void Set(int id)
+    public void Set(int objectId, OnlinePlayerId playerOwner)
 	{
-		Id = id;
+		ObjectId = objectId;
+		PlayerOwner = playerOwner;
 	}
 }

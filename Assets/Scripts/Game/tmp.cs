@@ -20,7 +20,7 @@ public class tmp : MonoBehaviour
 
 		if (Input.GetKeyDown(KeyCode.Space))
 		{
-			this.OnlineInstantiate(OnlinePrefabs.GetPrefabBy("Sphere"), Vector3.zero, Quaternion.identity);
+			this.OnlineInstantiate(OnlinePrefabs.GetPrefabBy("Sphere"), Vector3.zero, Quaternion.identity, OnlineManager.GetPlayerId());
 		}
 	}
 }
