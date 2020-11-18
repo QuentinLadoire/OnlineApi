@@ -34,7 +34,8 @@ public enum MsgProtocol
 	None = -1,
 	PlayerConnection,
 	InstantiateObject,
-	DestroyObject
+	DestroyObject,
+	TransformReplication
 }
 
 public class InstantiateObjectInfo
@@ -324,6 +325,11 @@ public class OnlineManager : MonoBehaviour
 				var destroyInfo = new DestroyObjectInfo(bytes.Skip(sizeof(int)).ToArray());
 				this.OnlineDestroy(OnlineObjectManager.GetObjectBy(destroyInfo.Id).gameObject);
 				break;
+
+			case MsgProtocol.TransformReplication:
+				var objectId = BitConverter.ToInt32(bytes, sizeof(int));
+				OnlineObjectManager.GetObjectBy(objectId).ReadMSG(msgType, bytes);
+				break;
 		}
 	}
 	void ClientReceiveMsgCallback(byte[] bytes)
@@ -343,7 +349,9 @@ public class OnlineManager : MonoBehaviour
 				Destroy(new DestroyObjectInfo(bytes.Skip(sizeof(int)).ToArray()));
 				break;
 
-			case MsgProtocol.None:
+			case MsgProtocol.TransformReplication:
+				var objectId = BitConverter.ToInt32(bytes, sizeof(int));
+				OnlineObjectManager.GetObjectBy(objectId).ReadMSG(msgType, bytes);
 				break;
 		}
 	}

@@ -2441,6 +2441,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   clientPanel: {fileID: 1471951742}
+  serverPanel: {fileID: 392003365}
 --- !u!1 &1199979112
 GameObject:
   m_ObjectHideFlags: 0

@@ -5,6 +5,7 @@ using UnityEngine;
 public class tmp : MonoBehaviour
 {
 	[SerializeField] ClientPanel clientPanel = null;
+	[SerializeField] ServerPanel serverPanel = null;
 
 	private void Awake()
 	{
@@ -15,7 +16,8 @@ public class tmp : MonoBehaviour
 	{
 		if (Input.GetKeyDown(KeyCode.Alpha0))
 		{
-			if (clientPanel != null) clientPanel.gameObject.SetActive(!clientPanel.gameObject.activeSelf);
+			if (!OnlineManager.IsHost() && clientPanel != null) clientPanel.gameObject.SetActive(!clientPanel.gameObject.activeSelf);
+			if (OnlineManager.IsHost() && serverPanel != null) serverPanel.gameObject.SetActive(!serverPanel.gameObject.activeSelf);
 		}
 
 		if (Input.GetKeyDown(KeyCode.Space))
